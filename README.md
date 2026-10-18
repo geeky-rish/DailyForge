@@ -5,107 +5,127 @@
 
 ---
 
+## 🌐 Production URLs
+
+| Component | Target Platform | Live URL |
+| :--- | :--- | :--- |
+| **Frontend** | GitHub Pages | [https://geeky-rish.github.io/DailyForge/](https://geeky-rish.github.io/DailyForge/) |
+| **Backend API** | Render (Free Tier) | `https://dailyforge-backend.onrender.com` |
+| **Health Check** | Render | `https://dailyforge-backend.onrender.com/health` |
+| **Readiness Check** | Render | `https://dailyforge-backend.onrender.com/ready` |
+
+---
+
 ## 🌟 Key Features
 
-1. **Daily DSA Practice**: Delivers 2 curated questions every day from the Striver SDE 180 dataset.
-2. **Streak & Consistency Engine**: Tracks study streaks, revisions, attempts, and solves with freeze/gap protection.
-3. **Morning Briefing via Gmail SMTP**:
-   - Sends automated briefings with today's questions, streak statistics, and motivational quotes.
-   - Built with secure Gmail SMTP (`smtp.gmail.com:587`, STARTTLS).
-   - Reusable standalone sender without database dependencies.
-4. **GitHub Profile Integration**: Automatically updates a dedicated section on `geeky-rish/geeky-rish` with live challenge statistics.
-5. **Interactive Dashboard**: Modern dark-mode interface for managing questions, reviewing notes, and tracking progress.
+1. **Daily DSA Practice**: Delivers 2 curated questions every day from the Striver SDE 180 dataset in sheet order.
+2. **Persistent Tracking**: Full history of attempted, solved, deferred, and revision-flagged questions.
+   - Solved questions are never repeated as new assignments.
+   - Solving extra questions does not reduce the next day's 2-question allocation.
+3. **Streak & Consistency Engine**: Tracks study streaks, revisions, attempts, and solves with freeze/gap protection.
+4. **Render Cold-Start Protection ("Activate Backend")**:
+   - Modern dashboard detects sleeping Render free instances.
+   - Live retry counter and auto-reconnect with health polling.
+5. **Morning Briefing via Gmail SMTP**:
+   - Automated delivery every morning at **07:00 AM Asia/Kolkata (01:30 AM UTC)** via GitHub Actions.
+   - Uses `smtp.gmail.com:587` with STARTTLS encryption.
+   - Idempotent delivery with bounded retry backoff.
+6. **GitHub Profile README Sync**:
+   - Records genuine study sessions and updates the designated section of `geeky-rish/geeky-rish` between `<!-- DAILYFORGE:START -->` and `<!-- DAILYFORGE:END -->`.
+7. **Strict Server-Side Security**:
+   - Server validates numeric GitHub ID for `geeky-rish`. Unauthorized accounts are rejected with 403.
+   - Supports both HTTP-only cookies and Authorization Bearer headers for seamless cross-origin hosting.
 
 ---
 
-## 📧 Email Integration & Testing
+## ⚙️ External Configuration Guide
 
-DailyForge uses Gmail SMTP over port 587 with STARTTLS.
+### 1. GitHub OAuth App Setup
+To enable one-click GitHub login for your account:
+1. Go to **[GitHub Developer Settings -> OAuth Apps](https://github.com/settings/developers)**.
+2. Click **New OAuth App**.
+3. Fill in the details:
+   - **Application name**: `DailyForge`
+   - **Homepage URL**: `https://geeky-rish.github.io/DailyForge/`
+   - **Authorization callback URL**: `https://dailyforge-backend.onrender.com/auth/github/callback`
+4. Click **Register application**.
+5. Copy the **Client ID** and generate a **Client Secret**.
 
-### Environment Variables & GitHub Secrets
+### 2. Render Backend Deployment (`render.yaml`)
+1. Create a free account at **[Render.com](https://render.com)**.
+2. Click **New +** -> **Blueprint**.
+3. Connect repository `geeky-rish/DailyForge`.
+4. Render will detect `render.yaml` and provision:
+   - Web Service: `dailyforge-backend`
+   - PostgreSQL Database: `dailyforge-db`
+5. Fill in the required environment secrets when prompted:
+   - `GITHUB_CLIENT_ID`: (from step 1)
+   - `GITHUB_CLIENT_SECRET`: (from step 1)
+   - `GITHUB_WRITE_TOKEN`: A Personal Access Token (classic or fine-grained) with `repo:contents:write` on `geeky-rish/geeky-rish`.
+   - `SMTP_EMAIL`: `learn.rishipk@gmail.com`
+   - `SMTP_APP_PASSWORD`: (16-character Google App Password)
+   - `RECIPIENT_EMAIL`: `hello.rishikulkarni@gmail.com`
 
-| Secret / Env Var | Description | Example |
-| :--- | :--- | :--- |
-| `SMTP_EMAIL` | Sender Gmail address | `learn.rishipk@gmail.com` |
-| `SMTP_APP_PASSWORD` | 16-character Google App Password | `xxxx xxxx xxxx xxxx` |
-| `RECIPIENT_EMAIL` | Recipient email address | `hello.rishikulkarni@gmail.com` |
+### 3. GitHub Profile README Setup
+In your profile repository `geeky-rish/geeky-rish`, add the following markers anywhere in your `README.md`:
 
-> 🔒 **Security Notice**: Credentials are never hardcoded or printed in logs. Always configure them as GitHub Actions Secrets or local `.env` variables.
-
-### Testing via GitHub Actions
-
-You can trigger a test email on-demand directly from GitHub:
-1. Navigate to **Actions** in your GitHub repository.
-2. Select the **Test DailyForge Email** workflow.
-3. Click **Run workflow** (optionally provide custom subject and body).
-4. Inspect the workflow run logs for confirmation.
-
-### Running Test Email Locally
-
-```bash
-# Set your environment variables
-export SMTP_EMAIL="learn.rishipk@gmail.com"
-export SMTP_APP_PASSWORD="your-google-app-password"
-export RECIPIENT_EMAIL="hello.rishikulkarni@gmail.com"
-
-# Send test email
-python backend/scripts/send_email.py \
-  --subject "DailyForge SMTP Test" \
-  --body "Your DailyForge email delivery is working."
+```markdown
+<!-- DAILYFORGE:START -->
+<!-- DAILYFORGE:END -->
 ```
-
-Or run in dry-run mode (validates configuration without sending):
-```bash
-python backend/scripts/send_email.py --dry-run
-```
+DailyForge will automatically manage only the content between these markers.
 
 ---
 
-## 🚀 Quickstart
+## 📧 Email Integration & Automation
 
-### Backend Setup
+### Secrets Configured in GitHub Repository
+- `SMTP_EMAIL`: `learn.rishipk@gmail.com`
+- `SMTP_APP_PASSWORD`: `**** **** **** ****`
+- `RECIPIENT_EMAIL`: `hello.rishikulkarni@gmail.com`
 
+### Workflows in `.github/workflows/`
+1. **`test-email.yml`**: Manual test workflow to verify Gmail SMTP delivery anytime.
+2. **`daily-briefing.yml`**: Automated morning briefing scheduled for 07:00 IST (01:30 UTC), with manual `workflow_dispatch` trigger.
+3. **`deploy-pages.yml`**: Automated build and deployment of the frontend to GitHub Pages on every push to `main`.
+
+---
+
+## 🧪 Local Testing & Development
+
+### Backend
 ```bash
 cd backend
 python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
+.\venv\Scripts\activate      # Windows
+# source venv/bin/activate   # Linux/macOS
 
 pip install -r requirements.txt
 cp .env.example .env
 
-# Run database migrations
-alembic upgrade head
+# Run full backend test suite (67 tests)
+python -m pytest -v
 
-# Run tests
-pytest -v
-
-# Start development server
+# Run local development server
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend Setup
-
+### Frontend
 ```bash
 cd frontend
 npm install
+
+# Run frontend unit tests
+npm test
+
+# Build production bundle
+npm run build
+
+# Start local dev server
 npm run dev
 ```
 
 ---
 
-## 🧪 Testing
-
-```bash
-# Run backend test suite
-cd backend
-python -m pytest -v
-```
-
----
-
 ## 📜 License
-
-MIT License. Designed and maintained by [@geeky-rish](https://github.com/geeky-rish).
+MIT License. Crafted by [@geeky-rish](https://github.com/geeky-rish).

@@ -41,13 +41,15 @@ export interface ProgressStats {
 }
 
 export interface StudySession {
-  id: number;
-  date: string;
+  id?: number;
+  session_id?: number;
+  date?: string;
+  session_date?: string;
   challenge_day: number;
   questions_solved: number;
   duration_minutes?: number;
   notes?: string;
-  github_updated: boolean;
+  github_updated?: boolean;
   github_commit_sha?: string;
 }
 

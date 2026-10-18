@@ -146,7 +146,9 @@ def github_callback(
     jwt_token = create_access_token({"github_id": gh_id, "sub": gh_username})
 
     # Set HTTP-only cookie and redirect to frontend
-    response = RedirectResponse(url=f"{settings.frontend_url}?auth=success")
+    redirect_separator = "&" if "?" in settings.frontend_url else "?"
+    redirect_url = f"{settings.frontend_url}{redirect_separator}auth=success&token={jwt_token}"
+    response = RedirectResponse(url=redirect_url)
     is_prod = settings.app_env == "production"
     response.set_cookie(
         key="session_token",

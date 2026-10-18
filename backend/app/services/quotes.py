@@ -15,14 +15,21 @@ from app.models.models import DailyQuoteSelection
 
 logger = logging.getLogger(__name__)
 
-_QUOTES_PATH = Path(__file__).parent.parent.parent.parent / "data" / "quotes" / "quotes.json"
-
-
 def _load_quotes() -> list[dict]:
-    if _QUOTES_PATH.exists():
-        with open(_QUOTES_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    logger.warning("quotes.json not found at %s", _QUOTES_PATH)
+    candidates = [
+        Path(__file__).parent.parent.parent.parent / "data" / "quotes" / "quotes.json",
+        Path(__file__).parent.parent.parent / "data" / "quotes" / "quotes.json",
+        Path.cwd() / "data" / "quotes" / "quotes.json",
+        Path.cwd().parent / "data" / "quotes" / "quotes.json",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning("Error reading quotes at %s: %s", p, e)
+    logger.warning("quotes.json not found in candidate paths")
     return []
 
 

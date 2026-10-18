@@ -2,7 +2,7 @@
 import logging
 from typing import Optional
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,13 +16,20 @@ logger = logging.getLogger(__name__)
 
 def get_current_user(
     session_token: Optional[str] = Cookie(default=None),
+    authorization: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
 ) -> User:
-    """Extract authenticated user from HTTP-only session cookie."""
-    if not session_token:
+    """Extract authenticated user from HTTP-only session cookie or Bearer token header."""
+    token = session_token
+    if not token and authorization:
+        parts = authorization.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1]
+
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    payload = decode_access_token(session_token)
+    payload = decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 

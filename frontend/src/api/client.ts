@@ -1,25 +1,77 @@
-// Backend API client — never puts secrets in localStorage or frontend code
+// Backend API client — supports both HTTP-only cookies and Bearer tokens for cross-origin hosting
+import type {
+  DashboardData,
+  HealthResponse,
+  ProblemStatus,
+  ReadyResponse,
+  StudySession,
+  User,
+} from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Read API base URL from Vite environment variables (supports VITE_API_BASE_URL and VITE_API_URL)
+export const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://dailyforge-backend.onrender.com' : 'http://localhost:8000')
+).replace(/\/$/, '');
 
-class ApiError extends Error {
+const TOKEN_STORAGE_KEY = 'dailyforge_auth_token';
+
+export function getStoredToken(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null): void {
+  try {
+    if (token) {
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } else {
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted iframe environments
+  }
+}
+
+export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include', // send HTTP-only cookies
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
 
-  if (res.status === 401) throw new ApiError(401, 'Not authenticated');
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const url = `${API_BASE}${path}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      credentials: 'include', // Send HTTP-only session cookie
+      ...options,
+      headers,
+    });
+  } catch (netErr: any) {
+    throw new ApiError(0, `Network error: Backend unreachable at ${API_BASE}. (${netErr?.message || 'offline'})`);
+  }
+
+  if (res.status === 401) {
+    setStoredToken(null);
+    throw new ApiError(401, 'Not authenticated');
+  }
   if (res.status === 403) throw new ApiError(403, 'Not authorized');
   if (!res.ok) {
     const body = await res.text();
@@ -29,61 +81,109 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
-// ─── Health ─────────────────────────────────────────────────────────────────
+// ─── Health & Cold-Start Wake-up ──────────────────────────────────────────────
 
-export const health = () => request<{ status: string }>('/health');
-export const ready = () => request<{ status: string; database: string }>('/ready');
+export const checkHealth = () => request<HealthResponse>('/health');
+export const checkReady = () => request<ReadyResponse>('/ready');
+
+/**
+ * Wake up a sleeping Render backend service with retry backoff.
+ */
+export async function wakeBackend(
+  onProgress?: (attempt: number, elapsedSeconds: number) => void
+): Promise<{ success: boolean; attempts: number; elapsedSeconds: number; error?: string }> {
+  const startTime = Date.now();
+  let attempt = 0;
+  const maxAttempts = 30; // 30 attempts * 3s ~ 90 seconds max wait for Render free tier
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
+    if (onProgress) onProgress(attempt, elapsedSeconds);
+
+    try {
+      const h = await checkHealth();
+      if (h.status === 'ok') {
+        // Also verify ready
+        try {
+          await checkReady();
+        } catch {
+          // Ready may take a moment for database connection
+        }
+        return { success: true, attempts: attempt, elapsedSeconds };
+      }
+    } catch {
+      // Still waking up
+    }
+
+    // Wait 3 seconds before next retry
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+
+  return {
+    success: false,
+    attempts: attempt,
+    elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
+    error: `Backend did not respond after ${attempt} attempts.`,
+  };
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export const startGithubAuth = () =>
   request<{ auth_url: string; state: string }>('/auth/github/start', { method: 'POST' });
 
-export const logout = () => request<{ status: string }>('/auth/logout', { method: 'POST' });
+export const logout = async () => {
+  setStoredToken(null);
+  try {
+    return await request<{ status: string }>('/auth/logout', { method: 'POST' });
+  } catch {
+    return { status: 'logged_out' };
+  }
+};
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
-export const getMe = () =>
-  request<{ github_id: number; username: string; name?: string; avatar_url?: string }>('/api/me');
+export const getMe = () => request<User>('/api/me');
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-export const getDashboard = () => request<import('./types').DashboardData>('/api/dashboard');
+export const getDashboard = () => request<DashboardData>('/api/dashboard');
 
-// ─── Problem mutations ───────────────────────────────────────────────────────
+// ─── Problem Mutations ───────────────────────────────────────────────────────
 
 export const markAttempted = (problemId: number) =>
-  request<{ status: string; attempts: number }>(`/api/problems/${problemId}/attempted`, { method: 'POST' });
+  request<{ status: ProblemStatus; attempts: number }>(`/api/problems/${problemId}/attempted`, {
+    method: 'POST',
+  });
 
 export const markSolved = (problemId: number, isExtra = false) =>
-  request<{ status: string; solved_at: string }>(`/api/problems/${problemId}/solved`, {
+  request<{ status: ProblemStatus; solved_at: string }>(`/api/problems/${problemId}/solved`, {
     method: 'POST',
     body: JSON.stringify({ problem_db_id: problemId, is_extra: isExtra }),
   });
 
 export const markDeferred = (problemId: number) =>
-  request<{ status: string }>(`/api/problems/${problemId}/deferred`, { method: 'POST' });
+  request<{ status: ProblemStatus }>(`/api/problems/${problemId}/deferred`, { method: 'POST' });
 
 export const markNeedsRevision = (problemId: number) =>
-  request<{ status: string }>(`/api/problems/${problemId}/needs-revision`, { method: 'POST' });
+  request<{ status: ProblemStatus }>(`/api/problems/${problemId}/needs-revision`, { method: 'POST' });
 
-// ─── Study sessions ──────────────────────────────────────────────────────────
+// ─── Study Sessions ──────────────────────────────────────────────────────────
 
 export const createStudySession = (data: {
   questions_solved: number;
   duration_minutes?: number;
   notes?: string;
-}) => request<import('./types').StudySession>('/api/study-sessions', { method: 'POST', body: JSON.stringify(data) });
+}) => request<StudySession>('/api/study-sessions', { method: 'POST', body: JSON.stringify(data) });
 
 export const getStudySessions = (limit = 14) =>
-  request<import('./types').StudySession[]>(`/api/study-sessions?limit=${limit}`);
+  request<StudySession[]>(`/api/study-sessions?limit=${limit}`);
 
-// ─── GitHub README ───────────────────────────────────────────────────────────
+// ─── GitHub README Sync ──────────────────────────────────────────────────────
 
 export const updateGithubReadme = (sessionId: number, dryRun = false) =>
   request<{ status: string; commit_sha?: string; diff_preview?: string; dry_run: boolean }>(
     '/api/github/profile-readme',
     { method: 'POST', body: JSON.stringify({ session_id: sessionId, dry_run: dryRun }) }
   );
-
-export { ApiError };
