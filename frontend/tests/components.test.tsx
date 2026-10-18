@@ -11,7 +11,10 @@ describe('Frontend Component Suite', () => {
   it('renders Header with brand title and streak info', () => {
     render(
       <Header
-        user={null}
+        user={{
+          github_id: 1,
+          username: 'geeky-rish',
+        }}
         challengeDay={5}
         streak={3}
         backendStatus="ready"
@@ -129,8 +132,8 @@ describe('Frontend Component Suite', () => {
       />
     );
 
-    expect(screen.getByText('Forge Your Consistency')).toBeInTheDocument();
+    expect(screen.getByText('DailyForge')).toBeInTheDocument();
     expect(screen.getByText(/Sign in with GitHub/i)).toBeInTheDocument();
-    expect(screen.getByText(/2 Questions Daily/i)).toBeInTheDocument();
+    expect(screen.getByText(/Wake Backend/i)).toBeInTheDocument();
   });
 });

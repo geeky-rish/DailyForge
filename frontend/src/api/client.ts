@@ -19,7 +19,7 @@ const TOKEN_STORAGE_KEY = 'dailyforge_auth_token';
 
 export function getStoredToken(): string | null {
   try {
-    return sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    return localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY);
   } catch {
     return null;
   }
@@ -28,8 +28,10 @@ export function getStoredToken(): string | null {
 export function setStoredToken(token: string | null): void {
   try {
     if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
       sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
     } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
       sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     }
   } catch {

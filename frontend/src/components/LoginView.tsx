@@ -19,28 +19,52 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const isWaking = backendStatus === 'waking';
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto 0 auto' }}>
-      <div className="question-card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+    <div style={{ maxWidth: '520px', margin: '60px auto 0 auto' }}>
+      <div className="question-card" style={{ textAlign: 'center', padding: '48px 36px' }}>
         <div style={{ fontSize: '3.5rem', marginBottom: '16px', lineHeight: 1 }}>⚔️</div>
         
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.2rem', fontWeight: 800, marginBottom: '12px', background: 'linear-gradient(135deg, #FFFFFF 0%, #A5B4FC 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Forge Your Consistency
+        <h2 style={{
+          fontFamily: 'var(--font-heading)',
+          fontSize: '2rem',
+          fontWeight: 800,
+          marginBottom: '8px',
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #A5B4FC 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          letterSpacing: '-0.5px'
+        }}>
+          DailyForge
         </h2>
         
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto 28px auto' }}>
-          Your dedicated productivity suite for conquering the <strong>Striver SDE 180 DSA Challenge</strong>. Track two questions daily, build unstoppable streaks, and automatically showcase your progress on your GitHub Profile.
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '28px' }}>
+          Striver SDE 180 Consistency Suite.<br />
+          Please sign in with your GitHub account to continue.
         </p>
 
         {errorMessage && (
-          <div style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '8px', background: 'var(--danger-bg)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger-light)', fontSize: '0.88rem' }}>
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px 14px',
+            borderRadius: '8px',
+            background: 'var(--danger-bg)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'var(--danger-light)',
+            fontSize: '0.86rem'
+          }}>
             ⚠️ {errorMessage}
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginBottom: '36px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
           <button
             className="btn btn-primary"
-            style={{ fontSize: '1.1rem', padding: '14px 32px', minWidth: '260px', borderRadius: '12px' }}
+            style={{
+              fontSize: '1.05rem',
+              padding: '14px 28px',
+              width: '100%',
+              borderRadius: '12px',
+              fontWeight: 700
+            }}
             onClick={onLogin}
             disabled={isWaking}
           >
@@ -61,46 +85,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {backendStatus === 'ready' ? (
             <span style={{ fontSize: '0.82rem', color: 'var(--success-light)', fontWeight: 500 }}>
-              🟢 Backend is active and connected
+              🟢 Backend Ready
             </span>
           ) : (
             <button
               className="btn btn-outline btn-sm"
-              style={{ fontSize: '0.8rem' }}
+              style={{ fontSize: '0.8rem', width: '100%' }}
               onClick={onWakeBackend}
               disabled={isWaking}
             >
-              {isWaking ? `Waking Render container (${wakeSeconds}s)...` : '⚡ Wake Backend Preemptively'}
+              {isWaking ? `Waking Render container (${wakeSeconds}s)...` : '⚡ Wake Backend'}
             </button>
           )}
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border-card)', paddingTop: '28px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', textAlign: 'left' }}>
-            <div style={{ padding: '12px', background: 'var(--bg-card-subtle)', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>📋</div>
-              <strong style={{ fontSize: '0.88rem', color: '#FFFFFF', display: 'block' }}>2 Questions Daily</strong>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Curated Striver SDE 180 sheet progression</span>
-            </div>
-
-            <div style={{ padding: '12px', background: 'var(--bg-card-subtle)', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>🔥</div>
-              <strong style={{ fontSize: '0.88rem', color: '#FFFFFF', display: 'block' }}>Streak Tracking</strong>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Freeze &amp; gap protected consistency engine</span>
-            </div>
-
-            <div style={{ padding: '12px', background: 'var(--bg-card-subtle)', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>📧</div>
-              <strong style={{ fontSize: '0.88rem', color: '#FFFFFF', display: 'block' }}>7:00 AM Briefing</strong>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Automated morning email via Gmail SMTP</span>
-            </div>
-
-            <div style={{ padding: '12px', background: 'var(--bg-card-subtle)', borderRadius: '10px', border: '1px solid var(--border-card)' }}>
-              <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>🐙</div>
-              <strong style={{ fontSize: '0.88rem', color: '#FFFFFF', display: 'block' }}>GitHub Profile Sync</strong>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Auto-updates geeky-rish/geeky-rish README</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

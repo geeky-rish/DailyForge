@@ -11,6 +11,7 @@ import {
   markDeferred,
   markNeedsRevision,
   markSolved,
+  getStoredToken,
   setStoredToken,
   startGithubAuth,
   updateGithubReadme,
@@ -186,23 +187,21 @@ export const App: React.FC = () => {
     return { commit_sha: commitSha, diff_preview: diffPreview, error };
   };
 
-  // If not logged in, show dedicated Login / Landing screen only
-  if (!user && !isInitializing) {
+  // If verifying an existing token during initialization, show a clean centered spinner
+  if (isInitializing && getStoredToken()) {
     return (
-      <div className="app-container">
-        <Header
-          user={null}
-          challengeDay={1}
-          streak={0}
-          backendStatus={backendStatus}
-          wakeSeconds={wakeSeconds}
-          onActivateBackend={activateBackend}
-          onLogin={handleLogin}
-          onLogout={handleLogout}
-        />
+      <div className="app-container" style={{ minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div className="wake-spinner" style={{ width: '36px', height: '36px' }} />
+      </div>
+    );
+  }
 
+  // If not logged in, show dedicated Login screen only (never show dashboard or implementation details)
+  if (!user) {
+    return (
+      <div className="app-container" style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
         {authError && (
-          <div className="wake-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger-light)' }}>
+          <div className="wake-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger-light)', maxWidth: '520px', width: '100%', marginBottom: '16px' }}>
             <span>⚠️ {authError}</span>
             <button className="btn btn-outline btn-sm" onClick={() => setAuthError(null)}>Dismiss</button>
           </div>

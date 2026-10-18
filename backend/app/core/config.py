@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # GitHub OAuth
     github_client_id: str = ""
     github_client_secret: str = ""
-    github_redirect_uri: str = "http://localhost:8000/auth/github/callback"
+    github_redirect_uri: str = "https://dailyforge-backend-kwti.onrender.com/auth/github/callback"
 
     # Authorized user
     authorized_github_username: str = "geeky-rish"

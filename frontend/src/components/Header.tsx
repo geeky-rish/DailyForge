@@ -33,13 +33,16 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="header-actions">
-        <span className="badge badge-day">
-          Day {challengeDay || 1} of 100
-        </span>
-
-        <span className="badge badge-streak">
-          🔥 {streak} {streak === 1 ? 'Day' : 'Days'}
-        </span>
+        {user && (
+          <>
+            <span className="badge badge-day">
+              Day {challengeDay || 1} of 100
+            </span>
+            <span className="badge badge-streak">
+              🔥 {streak} {streak === 1 ? 'Day' : 'Days'}
+            </span>
+          </>
+        )}
 
         {backendStatus === 'ready' && (
           <span className="badge badge-backend ready" title="Render backend service is live and connected to database">

@@ -34,7 +34,7 @@ _oauth_states: dict[str, float] = {}
 
 
 @router.post("/github/start")
-def github_start(response: Response):
+def github_start(request: Request, response: Response):
     """Initiate GitHub OAuth flow. Returns the authorization URL."""
     state = generate_oauth_state()
     _oauth_states[state] = datetime.now(timezone.utc).timestamp()
@@ -45,9 +45,16 @@ def github_start(response: Response):
     for k in expired:
         del _oauth_states[k]
 
+    redirect_uri = settings.github_redirect_uri
+    if not redirect_uri or "localhost" in redirect_uri:
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+        proto = request.headers.get("x-forwarded-proto", "https")
+        if "onrender.com" in host:
+            redirect_uri = f"{proto}://{host}/auth/github/callback"
+
     params = {
         "client_id": settings.github_client_id,
-        "redirect_uri": settings.github_redirect_uri,
+        "redirect_uri": redirect_uri,
         "scope": "read:user",
         "state": state,
     }
