@@ -33,6 +33,19 @@ GITHUB_USER_URL = "https://api.github.com/user"
 _oauth_states: dict[str, float] = {}
 
 
+def get_redirect_uri(request: Request) -> str:
+    """Resolve the OAuth redirect URI matching the active host."""
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    proto = request.headers.get("x-forwarded-proto", "https")
+    if "onrender.com" in host:
+        return f"{proto}://{host}/auth/github/callback"
+    if settings.github_redirect_uri and "localhost" not in settings.github_redirect_uri and "dailyforge-backend.onrender.com" not in settings.github_redirect_uri:
+        return settings.github_redirect_uri
+    if host:
+        return f"{proto}://{host}/auth/github/callback"
+    return "https://dailyforge-backend-kwti.onrender.com/auth/github/callback"
+
+
 @router.post("/github/start")
 def github_start(request: Request, response: Response):
     """Initiate GitHub OAuth flow. Returns the authorization URL."""
@@ -45,12 +58,7 @@ def github_start(request: Request, response: Response):
     for k in expired:
         del _oauth_states[k]
 
-    redirect_uri = settings.github_redirect_uri
-    if not redirect_uri or "localhost" in redirect_uri:
-        host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
-        proto = request.headers.get("x-forwarded-proto", "https")
-        if "onrender.com" in host:
-            redirect_uri = f"{proto}://{host}/auth/github/callback"
+    redirect_uri = get_redirect_uri(request)
 
     params = {
         "client_id": settings.github_client_id,
@@ -64,15 +72,21 @@ def github_start(request: Request, response: Response):
 
 @router.get("/github/callback")
 def github_callback(
+    request: Request,
     code: Optional[str] = None,
     state: Optional[str] = None,
     error: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Handle GitHub OAuth callback. Validates state, exchanges code, creates session."""
+    frontend_target = settings.frontend_url or "https://geeky-rish.github.io/DailyForge"
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    if "localhost" in frontend_target and "onrender.com" in host:
+        frontend_target = "https://geeky-rish.github.io/DailyForge"
+
     if error:
         logger.warning("OAuth error from GitHub: %s", error)
-        return RedirectResponse(url=f"{settings.frontend_url}?auth_error={error}")
+        return RedirectResponse(url=f"{frontend_target}?auth_error={error}")
 
     if not code or not state:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing code or state")
@@ -81,6 +95,8 @@ def github_callback(
     if state not in _oauth_states:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OAuth state")
     del _oauth_states[state]
+
+    redirect_uri = get_redirect_uri(request)
 
     # Exchange code for access token
     try:
@@ -91,7 +107,7 @@ def github_callback(
                     "client_id": settings.github_client_id,
                     "client_secret": settings.github_client_secret,
                     "code": code,
-                    "redirect_uri": settings.github_redirect_uri,
+                    "redirect_uri": redirect_uri,
                 },
                 headers={"Accept": "application/json"},
             )
@@ -153,8 +169,8 @@ def github_callback(
     jwt_token = create_access_token({"github_id": gh_id, "sub": gh_username})
 
     # Set HTTP-only cookie and redirect to frontend
-    redirect_separator = "&" if "?" in settings.frontend_url else "?"
-    redirect_url = f"{settings.frontend_url}{redirect_separator}auth=success&token={jwt_token}"
+    redirect_separator = "&" if "?" in frontend_target else "?"
+    redirect_url = f"{frontend_target}{redirect_separator}auth=success&token={jwt_token}"
     response = RedirectResponse(url=redirect_url)
     is_prod = settings.app_env == "production"
     response.set_cookie(
