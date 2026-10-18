@@ -10,9 +10,9 @@
 | Component | Target Platform | Live URL |
 | :--- | :--- | :--- |
 | **Frontend** | GitHub Pages | [https://geeky-rish.github.io/DailyForge/](https://geeky-rish.github.io/DailyForge/) |
-| **Backend API** | Render (Free Tier) | `https://dailyforge-backend.onrender.com` |
-| **Health Check** | Render | `https://dailyforge-backend.onrender.com/health` |
-| **Readiness Check** | Render | `https://dailyforge-backend.onrender.com/ready` |
+| **Backend API** | Render (Free Tier) | `https://dailyforge-backend-kwti.onrender.com` |
+| **Health Check** | Render | `https://dailyforge-backend-kwti.onrender.com/health` |
+| **Readiness Check** | Render | `https://dailyforge-backend-kwti.onrender.com/ready` |
 
 ---
 
@@ -47,7 +47,7 @@ To enable one-click GitHub login for your account:
 3. Fill in the details:
    - **Application name**: `DailyForge`
    - **Homepage URL**: `https://geeky-rish.github.io/DailyForge/`
-   - **Authorization callback URL**: `https://dailyforge-backend.onrender.com/auth/github/callback`
+   - **Authorization callback URL**: `https://dailyforge-backend-kwti.onrender.com/auth/github/callback`
 4. Click **Register application**.
 5. Copy the **Client ID** and generate a **Client Secret**.
 

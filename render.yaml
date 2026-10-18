@@ -22,7 +22,7 @@ services:
       - key: FRONTEND_URL
         value: https://geeky-rish.github.io/DailyForge
       - key: GITHUB_REDIRECT_URI
-        value: https://dailyforge-backend.onrender.com/auth/github/callback
+        value: https://dailyforge-backend-kwti.onrender.com/auth/github/callback
       - key: AUTHORIZED_GITHUB_USERNAME
         value: geeky-rish
       - key: GITHUB_README_REPO

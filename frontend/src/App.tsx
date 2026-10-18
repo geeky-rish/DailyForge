@@ -23,6 +23,7 @@ import { StatsGrid } from './components/StatsGrid';
 import { DailyQuestions } from './components/DailyQuestions';
 import { StudySessionSync } from './components/StudySessionSync';
 import { RecentSessions } from './components/RecentSessions';
+import { LoginView } from './components/LoginView';
 import './styles/main.css';
 
 export const App: React.FC = () => {
@@ -66,7 +67,7 @@ export const App: React.FC = () => {
       await refreshData();
     } else {
       setBackendStatus('error');
-      setErrorMessage(res.error || 'Failed to wake backend. Please check hosting status.');
+      setErrorMessage(res.error || 'Failed to wake backend on Render.');
     }
   }, [refreshData]);
 
@@ -112,8 +113,19 @@ export const App: React.FC = () => {
 
   const handleLogin = async () => {
     try {
+      setErrorMessage('');
+      // Auto-wake backend if not already active
       if (backendStatus !== 'ready') {
-        await activateBackend();
+        setBackendStatus('waking');
+        const res = await wakeBackend((_attempt, seconds) => {
+          setWakeSeconds(seconds);
+        });
+        if (!res.success) {
+          setBackendStatus('error');
+          setErrorMessage(res.error || 'Failed to wake backend on Render.');
+          return;
+        }
+        setBackendStatus('ready');
       }
       const { auth_url } = await startGithubAuth();
       window.location.href = auth_url;
@@ -174,6 +186,40 @@ export const App: React.FC = () => {
     return { commit_sha: commitSha, diff_preview: diffPreview, error };
   };
 
+  // If not logged in, show dedicated Login / Landing screen only
+  if (!user && !isInitializing) {
+    return (
+      <div className="app-container">
+        <Header
+          user={null}
+          challengeDay={1}
+          streak={0}
+          backendStatus={backendStatus}
+          wakeSeconds={wakeSeconds}
+          onActivateBackend={activateBackend}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        />
+
+        {authError && (
+          <div className="wake-banner" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger-light)' }}>
+            <span>⚠️ {authError}</span>
+            <button className="btn btn-outline btn-sm" onClick={() => setAuthError(null)}>Dismiss</button>
+          </div>
+        )}
+
+        <LoginView
+          backendStatus={backendStatus}
+          wakeSeconds={wakeSeconds}
+          errorMessage={errorMessage}
+          onLogin={handleLogin}
+          onWakeBackend={activateBackend}
+        />
+      </div>
+    );
+  }
+
+  // Authenticated Dashboard View
   return (
     <div className="app-container">
       <Header
@@ -216,28 +262,12 @@ export const App: React.FC = () => {
         onMarkNeedsRevision={handleMarkNeedsRevision}
       />
 
-      {user && (
-        <StudySessionSync
-          defaultSolvedCount={dashboard?.assignment?.solved_count || 2}
-          onRecordAndSync={handleRecordAndSync}
-        />
-      )}
+      <StudySessionSync
+        defaultSolvedCount={dashboard?.assignment?.solved_count || 2}
+        onRecordAndSync={handleRecordAndSync}
+      />
 
       <RecentSessions sessions={sessions} />
-
-      {!user && !isInitializing && (
-        <div className="question-card" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '32px' }}>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', marginBottom: '8px' }}>
-            Ready to Forge Your Consistency?
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px', maxWidth: '500px', margin: '0 auto 20px auto' }}>
-            Sign in with your authorized GitHub account (geeky-rish) to track your daily progress, streaks, and sync to your GitHub Profile README.
-          </p>
-          <button className="btn btn-primary" onClick={handleLogin}>
-            Sign in with GitHub
-          </button>
-        </div>
-      )}
     </div>
   );
 };

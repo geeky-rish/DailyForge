@@ -4,6 +4,7 @@ import { Header } from '../src/components/Header';
 import { QuoteCard } from '../src/components/QuoteCard';
 import { StatsGrid } from '../src/components/StatsGrid';
 import { DailyQuestions } from '../src/components/DailyQuestions';
+import { LoginView } from '../src/components/LoginView';
 import type { DailyAssignment, ProgressStats, Quote, StreakInfo } from '../src/types';
 
 describe('Frontend Component Suite', () => {
@@ -112,10 +113,24 @@ describe('Frontend Component Suite', () => {
         onMarkNeedsRevision={vi.fn()}
       />
     );
-
     expect(screen.getByText('Set Matrix Zeros')).toBeInTheDocument();
     expect(screen.getByText("Pascal's Triangle")).toBeInTheDocument();
     expect(screen.getByText('Medium')).toBeInTheDocument();
     expect(screen.getByText('Easy')).toBeInTheDocument();
+  });
+
+  it('renders LoginView when user is unauthenticated', () => {
+    render(
+      <LoginView
+        backendStatus="idle"
+        wakeSeconds={0}
+        onLogin={vi.fn()}
+        onWakeBackend={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Forge Your Consistency')).toBeInTheDocument();
+    expect(screen.getByText(/Sign in with GitHub/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 Questions Daily/i)).toBeInTheDocument();
   });
 });

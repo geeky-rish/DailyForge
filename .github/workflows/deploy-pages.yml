@@ -47,7 +47,7 @@ jobs:
       - name: Build Production Bundle
         env:
           VITE_BASE_URL: '/DailyForge/'
-          VITE_API_BASE_URL: 'https://dailyforge-backend.onrender.com'
+          VITE_API_BASE_URL: 'https://dailyforge-backend-kwti.onrender.com'
         run: npm run build
 
       - name: Setup Pages
