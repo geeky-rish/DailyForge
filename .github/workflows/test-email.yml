@@ -1,0 +1,63 @@
+name: Test DailyForge Email
+
+on:
+  workflow_dispatch:
+    inputs:
+      subject:
+        description: 'Email Subject'
+        required: false
+        default: 'DailyForge SMTP Test'
+      body:
+        description: 'Email Body'
+        required: false
+        default: 'Your DailyForge email delivery is working.'
+
+jobs:
+  test-email:
+    name: Send Test Email via Gmail SMTP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Secrets Presence
+        env:
+          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: |
+          MISSING=0
+          if [ -z "$SMTP_EMAIL" ]; then
+            echo "::error::Secret SMTP_EMAIL is not set in GitHub repository secrets."
+            MISSING=1
+          fi
+          if [ -z "$SMTP_APP_PASSWORD" ]; then
+            echo "::error::Secret SMTP_APP_PASSWORD is not set in GitHub repository secrets."
+            MISSING=1
+          fi
+          if [ -z "$RECIPIENT_EMAIL" ]; then
+            echo "::error::Secret RECIPIENT_EMAIL is not set in GitHub repository secrets."
+            MISSING=1
+          fi
+          if [ "$MISSING" -eq 1 ]; then
+            echo "Please configure the missing secrets in Repo Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "All required SMTP secrets (SMTP_EMAIL, SMTP_APP_PASSWORD, RECIPIENT_EMAIL) are present."
+
+      - name: Send Test Email
+        env:
+          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          EMAIL_SUBJECT: ${{ inputs.subject || 'DailyForge SMTP Test' }}
+          EMAIL_BODY: ${{ inputs.body || 'Your DailyForge email delivery is working.' }}
+        run: |
+          python backend/scripts/send_email.py \
+            --subject "$EMAIL_SUBJECT" \
+            --body "$EMAIL_BODY"

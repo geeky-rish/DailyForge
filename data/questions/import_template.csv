@@ -1,0 +1,6 @@
+id,sheet_order,title,topic,subtopic,difficulty,url,notes
+SDE001,1,Set Matrix Zeros,Arrays,Matrix,Medium,https://leetcode.com/problems/set-matrix-zeroes/,
+SDE002,2,Pascal's Triangle,Arrays,Matrix,Easy,https://leetcode.com/problems/pascals-triangle/,
+SDE003,3,Next Permutation,Arrays,Permutation,Medium,https://leetcode.com/problems/next-permutation/,
+SDE004,4,Kadane's Algorithm,Arrays,Subarray,Medium,https://leetcode.com/problems/maximum-subarray/,
+SDE005,5,Sort an array of 0s 1s and 2s,Arrays,Sorting,Medium,https://leetcode.com/problems/sort-colors/,Dutch National Flag
