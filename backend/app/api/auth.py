@@ -157,6 +157,7 @@ def github_callback(
         user.github_username = gh_username
         user.github_avatar_url = gh_user.get("avatar_url")
         user.github_name = gh_user.get("name")
+        user.github_access_token = access_token
         user.last_login = datetime.now(timezone.utc)
     else:
         user = User(
@@ -164,6 +165,7 @@ def github_callback(
             github_username=gh_username,
             github_avatar_url=gh_user.get("avatar_url"),
             github_name=gh_user.get("name"),
+            github_access_token=access_token,
             last_login=datetime.now(timezone.utc),
         )
         db.add(user)

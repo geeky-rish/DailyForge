@@ -22,6 +22,7 @@ class User(Base):
     github_username: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     github_avatar_url: Mapped[Optional[str]] = mapped_column(String(512))
     github_name: Mapped[Optional[str]] = mapped_column(String(255))
+    github_access_token: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

@@ -152,7 +152,12 @@ def update_github_profile_readme(
         }
 
     from app.api.auth import get_user_token
-    write_token = settings.github_write_token or get_user_token(user.id) or get_user_token(user.github_id)
+    write_token = (
+        settings.github_write_token
+        or getattr(user, "github_access_token", None)
+        or get_user_token(user.id)
+        or get_user_token(user.github_id)
+    )
 
     if not write_token:
         record.status = "failed"
