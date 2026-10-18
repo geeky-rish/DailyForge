@@ -5,6 +5,7 @@ import { QuoteCard } from '../src/components/QuoteCard';
 import { StatsGrid } from '../src/components/StatsGrid';
 import { DailyQuestions } from '../src/components/DailyQuestions';
 import { LoginView } from '../src/components/LoginView';
+import { StudySessionSync } from '../src/components/StudySessionSync';
 import type { DailyAssignment, ProgressStats, Quote, StreakInfo } from '../src/types';
 
 describe('Frontend Component Suite', () => {
@@ -135,5 +136,24 @@ describe('Frontend Component Suite', () => {
     expect(screen.getByText('DailyForge')).toBeInTheDocument();
     expect(screen.getByText(/Sign in with GitHub/i)).toBeInTheDocument();
     expect(screen.getByText(/Wake Backend/i)).toBeInTheDocument();
+  });
+
+  it('renders StudySessionSync with Commit to GitHub button and quote preview', () => {
+    const mockQuote: Quote = {
+      day: 1,
+      text: 'One day or day one. You decide.',
+      author: 'DailyForge',
+    };
+
+    render(
+      <StudySessionSync
+        quote={mockQuote}
+        onCommitToGithub={vi.fn().mockResolvedValue({ commit_sha: 'abc1234' })}
+      />
+    );
+
+    expect(screen.getByText(/Sync Random Dev Quote to GitHub/i)).toBeInTheDocument();
+    expect(screen.getByText(/One day or day one/i)).toBeInTheDocument();
+    expect(screen.getByText(/Commit to GitHub/i)).toBeInTheDocument();
   });
 });

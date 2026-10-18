@@ -34,7 +34,7 @@ END_MARKER = "<!-- DAILYFORGE:END -->"
 GITHUB_API = "https://api.github.com"
 
 
-def _build_readme_section(session: StudySession, quote: dict, dashboard_url: str) -> str:
+def _build_readme_section(session: StudySession, quote: dict, dashboard_url: str = "") -> str:
     return f"""{START_MARKER}
 ## ⚔️ DailyForge — DSA Challenge
 
@@ -48,16 +48,56 @@ def _build_readme_section(session: StudySession, quote: dict, dashboard_url: str
 {END_MARKER}"""
 
 
-def _inject_section(readme_content: str, new_section: str) -> str:
-    """Replace existing section or append if markers absent."""
-    pattern = re.compile(
+def _build_quote_block(quote: dict) -> str:
+    quote_text = quote.get("text", "")
+    quote_author = quote.get("author", "DailyForge")
+    return f'> "{quote_text}"\n>\n> — *{quote_author}*'
+
+
+def _inject_section(readme_content: str, new_section: str, quote: Optional[dict] = None) -> str:
+    """Update Random Dev Quote section in profile README, or replace DailyForge markers."""
+    if quote is None and START_MARKER in new_section:
+        pattern = re.compile(
+            r"<!-- DAILYFORGE:START -->.*?<!-- DAILYFORGE:END -->",
+            re.DOTALL
+        )
+        if pattern.search(readme_content):
+            return pattern.sub(new_section, readme_content)
+        return (readme_content.rstrip() + "\n\n" + new_section + "\n").lstrip()
+
+    # 1. Existing dedicated quote markers
+    marker_pattern = re.compile(
+        r"<!-- DAILYFORGE_QUOTE:START -->.*?<!-- DAILYFORGE_QUOTE:END -->",
+        re.DOTALL
+    )
+    if marker_pattern.search(readme_content):
+        return marker_pattern.sub(
+            f"<!-- DAILYFORGE_QUOTE:START -->\n{quote_block}\n<!-- DAILYFORGE_QUOTE:END -->",
+            readme_content
+        )
+
+    # 2. Heading containing 'Random Dev Quote' (with any emoji/formatting)
+    heading_pattern = re.compile(
+        r"(#+\s*[^\n]*Random Dev Quote[^\n]*\n)(.*?)(?=\n#|\n---|<!--|\Z)",
+        re.DOTALL | re.IGNORECASE
+    )
+    if heading_pattern.search(readme_content):
+        return heading_pattern.sub(
+            r"\g<1><!-- DAILYFORGE_QUOTE:START -->\n" + quote_block + r"\n<!-- DAILYFORGE_QUOTE:END -->\n",
+            readme_content,
+            count=1
+        )
+
+    # 3. Existing general DAILYFORGE markers
+    df_pattern = re.compile(
         r"<!-- DAILYFORGE:START -->.*?<!-- DAILYFORGE:END -->",
         re.DOTALL
     )
-    if pattern.search(readme_content):
-        return pattern.sub(new_section, readme_content)
-    # Append
-    return readme_content.rstrip() + "\n\n" + new_section + "\n"
+    if df_pattern.search(readme_content):
+        return df_pattern.sub(new_section, readme_content)
+
+    # 4. Fallback: append Random Dev Quote at bottom
+    return readme_content.rstrip() + f"\n\n### ✍️ Random Dev Quote\n<!-- DAILYFORGE_QUOTE:START -->\n{quote_block}\n<!-- DAILYFORGE_QUOTE:END -->\n"
 
 
 def update_github_profile_readme(
@@ -79,8 +119,7 @@ def update_github_profile_readme(
         )
     ).scalar_one_or_none()
 
-    if existing and existing.status in ("success", "dry_run"):
-        logger.info("GitHub README already updated for session %d (status=%s)", session.id, existing.status)
+    if dry_run and existing and existing.status in ("success", "dry_run"):
         return {
             "status": existing.status,
             "idempotent": True,
@@ -112,15 +151,20 @@ def update_github_profile_readme(
             "dry_run": True,
         }
 
-    if not settings.github_write_token:
+    from app.api.auth import get_user_token
+    write_token = settings.github_write_token or get_user_token(user.id) or get_user_token(user.github_id)
+
+    if not write_token:
         record.status = "failed"
-        record.error_message = "GITHUB_WRITE_TOKEN not configured"
+        record.error_message = "GitHub write token not configured"
         db.commit()
-        raise RuntimeError("GITHUB_WRITE_TOKEN not configured.")
+        raise RuntimeError(
+            "GitHub write token not configured. Please add GITHUB_WRITE_TOKEN in Render environment variables or re-login with GitHub."
+        )
 
     repo = settings.github_readme_repo  # geeky-rish/geeky-rish
     headers = {
-        "Authorization": f"token {settings.github_write_token}",
+        "Authorization": f"token {write_token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
@@ -141,15 +185,14 @@ def update_github_profile_readme(
                 current_content = base64.b64decode(data["content"]).decode("utf-8")
                 sha = data["sha"]
 
-        # 2. Build new section and inject
-        new_section = _build_readme_section(session, quote, dashboard_url)
-        new_content = _inject_section(current_content, new_section)
+        # 2. Inject Random Dev Quote
+        new_content = _inject_section(current_content, "", quote=quote)
 
-        # 4. Write to GitHub
+        # 3. Write to GitHub
         import base64
         encoded = base64.b64encode(new_content.encode("utf-8")).decode("utf-8")
         commit_payload = {
-            "message": f"docs: record DailyForge study session (day {session.challenge_day})",
+            "message": "docs: update random dev quote 💡",
             "content": encoded,
         }
         if sha:

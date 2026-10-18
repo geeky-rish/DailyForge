@@ -1,139 +1,118 @@
 import React, { useState } from 'react';
+import type { Quote } from '../types';
 
 interface StudySessionSyncProps {
-  defaultSolvedCount: number;
-  onRecordAndSync: (data: {
-    questions_solved: number;
-    duration_minutes?: number;
-    notes?: string;
-  }) => Promise<{ commit_sha?: string; diff_preview?: string; error?: string }>;
+  quote?: Quote | null;
+  onCommitToGithub: () => Promise<{ commit_sha?: string; error?: string }>;
 }
 
 export const StudySessionSync: React.FC<StudySessionSyncProps> = ({
-  defaultSolvedCount,
-  onRecordAndSync,
+  quote,
+  onCommitToGithub,
 }) => {
-  const [questionsSolved, setQuestionsSolved] = useState<number>(defaultSolvedCount || 2);
-  const [durationMinutes, setDurationMinutes] = useState<number>(60);
-  const [notes, setNotes] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [syncResult, setSyncResult] = useState<{
+  const [isCommitting, setIsCommitting] = useState<boolean>(false);
+  const [result, setResult] = useState<{
     success: boolean;
     commit_sha?: string;
     message?: string;
   } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSyncResult(null);
+  const handleCommit = async () => {
+    setIsCommitting(true);
+    setResult(null);
 
     try {
-      const res = await onRecordAndSync({
-        questions_solved: Number(questionsSolved),
-        duration_minutes: Number(durationMinutes),
-        notes: notes.trim() || undefined,
-      });
-
+      const res = await onCommitToGithub();
       if (res.error) {
-        setSyncResult({ success: false, message: res.error });
+        setResult({ success: false, message: res.error });
       } else {
-        setSyncResult({
+        setResult({
           success: true,
           commit_sha: res.commit_sha,
           message: res.commit_sha
-            ? `Successfully committed to GitHub README (commit ${res.commit_sha.slice(0, 7)})`
-            : 'Study session recorded and streak updated!',
+            ? `Successfully committed new quote to geeky-rish/geeky-rish (commit ${res.commit_sha.slice(0, 7)})`
+            : 'Quote committed and consistency streak recorded!',
         });
-        setNotes('');
       }
     } catch (err: any) {
-      setSyncResult({ success: false, message: err?.message || 'Failed to record session' });
+      setResult({ success: false, message: err?.message || 'Failed to commit quote to GitHub' });
     } finally {
-      setIsSubmitting(false);
+      setIsCommitting(false);
     }
   };
 
   return (
     <div className="sync-section">
-      <div className="section-title" style={{ marginBottom: '12px' }}>
-        <span>Record Study Session &amp; Sync GitHub Profile</span>
+      <div className="section-title" style={{ marginBottom: '10px' }}>
+        <span>Sync Random Dev Quote to GitHub</span>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           Updates geeky-rish/geeky-rish README
         </span>
       </div>
 
-      <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-        Record your daily preparation session to increment your consistency streak and automatically sync your live challenge statistics to your GitHub Profile README.
+      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+        Sync a fresh dev quote directly to the <strong>Random Dev Quote</strong> section of your GitHub profile README with a single click.
       </p>
 
-      <form onSubmit={handleSubmit}>
-        <div className="sync-form">
-          <div className="form-group">
-            <label htmlFor="questions-solved">Questions Solved Today</label>
-            <input
-              id="questions-solved"
-              type="number"
-              min="0"
-              max="50"
-              className="form-control"
-              value={questionsSolved}
-              onChange={(e) => setQuestionsSolved(Number(e.target.value))}
-              required
-            />
+      {quote && (
+        <div style={{
+          padding: '14px 18px',
+          background: 'var(--bg-card-subtle)',
+          border: '1px solid var(--border-card)',
+          borderRadius: '10px',
+          marginBottom: '18px',
+          fontStyle: 'italic',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            &ldquo;{quote.text}&rdquo; <span style={{ fontStyle: 'normal', color: 'var(--accent)', fontWeight: 600 }}>&mdash; {quote.author}</span>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="duration-mins">Session Duration (Minutes)</label>
-            <input
-              id="duration-mins"
-              type="number"
-              min="5"
-              max="720"
-              className="form-control"
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="session-notes">Session Notes / Insights (Optional)</label>
-            <input
-              id="session-notes"
-              type="text"
-              placeholder="e.g. Mastered Kadane's algorithm and two-pointer subinterval merges."
-              className="form-control"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'normal' }}>
+            Random Dev Quote
+          </span>
         </div>
+      )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Recording & Syncing...' : '🚀 Save Session & Update GitHub Profile'}
-          </button>
-        </div>
-      </form>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ padding: '12px 24px', fontSize: '0.98rem', fontWeight: 600, borderRadius: '10px' }}
+          onClick={handleCommit}
+          disabled={isCommitting}
+        >
+          {isCommitting ? (
+            <>
+              <div className="wake-spinner" style={{ width: '16px', height: '16px' }} />
+              <span>Committing to GitHub...</span>
+            </>
+          ) : (
+            <>
+              <span>🐙 Commit to GitHub</span>
+            </>
+          )}
+        </button>
+      </div>
 
-      {syncResult && (
+      {result && (
         <div
           style={{
             marginTop: '16px',
             padding: '12px 16px',
             borderRadius: '8px',
             fontSize: '0.88rem',
-            background: syncResult.success ? 'var(--success-bg)' : 'var(--danger-bg)',
-            border: `1px solid ${syncResult.success ? 'var(--success-border)' : 'rgba(239, 68, 68, 0.3)'}`,
-            color: syncResult.success ? 'var(--success-light)' : 'var(--danger-light)',
+            background: result.success ? 'var(--success-bg)' : 'var(--danger-bg)',
+            border: `1px solid ${result.success ? 'var(--success-border)' : 'rgba(239, 68, 68, 0.3)'}`,
+            color: result.success ? 'var(--success-light)' : 'var(--danger-light)',
           }}
         >
-          {syncResult.success ? '✅ ' : '⚠️ '}
-          {syncResult.message}
+          {result.success ? '✅ ' : '⚠️ '}
+          {result.message}
         </div>
       )}
     </div>

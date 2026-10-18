@@ -36,7 +36,7 @@ export const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions }) => {
               <tr key={s.id}>
                 <td>{s.date}</td>
                 <td style={{ fontWeight: 600, color: 'var(--primary-light)' }}>
-                  Day {s.challenge_day}
+                  Day {s.challenge_day > 100 ? 1 : s.challenge_day}
                 </td>
                 <td style={{ color: 'var(--success-light)', fontWeight: 600 }}>
                   {s.questions_solved}

@@ -65,3 +65,12 @@ def get_quote_for_day(db: Session, challenge_day: int) -> dict:
     db.refresh(selection)
 
     return {"day": challenge_day, "text": selection.quote_text, "author": selection.quote_author}
+
+
+def get_random_quote() -> dict:
+    """Return a random quote from the dataset for GitHub profile sync."""
+    import random
+    quotes = _load_quotes()
+    if quotes:
+        return random.choice(quotes)
+    return {"text": "Consistency is what transforms average into excellence.", "author": "DailyForge"}

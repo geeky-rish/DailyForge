@@ -49,7 +49,19 @@ def record_study_session(
 
     from app.services.scheduler import get_challenge_day
     from app.core.config import settings
-    challenge_day = get_challenge_day(settings.challenge_start_date, today)
+
+    first_session = db.execute(
+        select(StudySession)
+        .where(StudySession.user_id == user.id)
+        .order_by(StudySession.session_date.asc())
+    ).scalars().first()
+
+    user_start = first_session.session_date if first_session else today
+    start_date = settings.challenge_start_date
+    if not start_date or start_date == "2024-01-01":
+        start_date = user_start
+
+    challenge_day = min(100, max(1, get_challenge_day(start_date, today)))
 
     session = StudySession(
         user_id=user.id,

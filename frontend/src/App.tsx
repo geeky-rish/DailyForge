@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import type { BackendStatus, DashboardData, StudySession, User } from './types';
 import {
   checkHealth,
-  createStudySession,
   getDashboard,
   getMe,
   getStudySessions,
@@ -161,30 +160,15 @@ export const App: React.FC = () => {
     await refreshData();
   };
 
-  const handleRecordAndSync = async (data: {
-    questions_solved: number;
-    duration_minutes?: number;
-    notes?: string;
-  }) => {
-    const sessionRes = await createStudySession(data);
-    let commitSha: string | undefined;
-    let diffPreview: string | undefined;
-    let error: string | undefined;
-
-    const sessionId = sessionRes.session_id || sessionRes.id;
-    if (sessionId) {
-      try {
-        const readmeRes = await updateGithubReadme(sessionId, false);
-        commitSha = readmeRes.commit_sha;
-        diffPreview = readmeRes.diff_preview;
-      } catch (readmeErr: any) {
-        console.warn('GitHub README sync failed:', readmeErr);
-        error = `Session saved, but GitHub sync failed: ${readmeErr?.message || 'Check GITHUB_WRITE_TOKEN'}`;
-      }
+  const handleCommitToGithub = async () => {
+    try {
+      const res = await updateGithubReadme();
+      await refreshData();
+      return { commit_sha: res.commit_sha, error: undefined };
+    } catch (err: any) {
+      console.warn('GitHub README sync failed:', err);
+      return { error: err?.message || 'Failed to update GitHub profile README' };
     }
-
-    await refreshData();
-    return { commit_sha: commitSha, diff_preview: diffPreview, error };
   };
 
   // If verifying an existing token during initialization, show a clean centered spinner
@@ -223,7 +207,7 @@ export const App: React.FC = () => {
     <div className="app-container">
       <Header
         user={user}
-        challengeDay={dashboard?.challenge_day || 1}
+        challengeDay={Math.min(100, Math.max(1, (dashboard?.challenge_day && dashboard.challenge_day <= 100) ? dashboard.challenge_day : 1))}
         streak={dashboard?.streak?.current_streak || 0}
         backendStatus={backendStatus}
         wakeSeconds={wakeSeconds}
@@ -262,8 +246,8 @@ export const App: React.FC = () => {
       />
 
       <StudySessionSync
-        defaultSolvedCount={dashboard?.assignment?.solved_count || 2}
-        onRecordAndSync={handleRecordAndSync}
+        quote={dashboard?.quote || null}
+        onCommitToGithub={handleCommitToGithub}
       />
 
       <RecentSessions sessions={sessions} />

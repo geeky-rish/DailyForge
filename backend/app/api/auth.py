@@ -31,6 +31,11 @@ GITHUB_USER_URL = "https://api.github.com/user"
 
 # In-memory state store (acceptable for single-user app; replace with Redis for multi-user)
 _oauth_states: dict[str, float] = {}
+_user_oauth_tokens: dict[int, str] = {}
+
+
+def get_user_token(user_id: int) -> Optional[str]:
+    return _user_oauth_tokens.get(user_id)
 
 
 def get_redirect_uri(request: Request) -> str:
@@ -63,7 +68,7 @@ def github_start(request: Request, response: Response):
     params = {
         "client_id": settings.github_client_id,
         "redirect_uri": redirect_uri,
-        "scope": "read:user",
+        "scope": "read:user,repo,public_repo",
         "state": state,
     }
     url = f"{GITHUB_AUTHORIZE_URL}?{urlencode(params)}"
@@ -164,6 +169,10 @@ def github_callback(
         db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Cache user OAuth token for GitHub profile updates
+    _user_oauth_tokens[user.id] = access_token
+    _user_oauth_tokens[gh_id] = access_token
 
     # Create session JWT
     jwt_token = create_access_token({"github_id": gh_id, "sub": gh_username})

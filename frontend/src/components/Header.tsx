@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
         {user && (
           <>
             <span className="badge badge-day">
-              Day {challengeDay || 1} of 100
+              Day {(challengeDay && challengeDay <= 100) ? challengeDay : 1} of 100
             </span>
             <span className="badge badge-streak">
               🔥 {streak} {streak === 1 ? 'Day' : 'Days'}

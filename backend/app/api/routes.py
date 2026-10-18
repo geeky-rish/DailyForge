@@ -31,7 +31,7 @@ class StudySessionCreate(BaseModel):
 
 
 class GitHubUpdateRequest(BaseModel):
-    session_id: int
+    session_id: Optional[int] = None
     dry_run: bool = False
 
 
@@ -77,7 +77,18 @@ def get_dashboard(
 ):
     """Return complete dashboard data for the authenticated user."""
     today = scheduler.get_today_ist()
-    challenge_day = scheduler.get_challenge_day(settings.challenge_start_date, today)
+    first_session = db.execute(
+        select(StudySession)
+        .where(StudySession.user_id == current_user.id)
+        .order_by(StudySession.session_date.asc())
+    ).scalars().first()
+
+    user_start = first_session.session_date if first_session else today
+    start_date = settings.challenge_start_date
+    if not start_date or start_date == "2024-01-01":
+        start_date = user_start
+
+    challenge_day = min(100, max(1, scheduler.get_challenge_day(start_date, today)))
 
     # Get or create today's assignment
     assignment = scheduler.get_or_create_daily_assignment(db, current_user)
@@ -224,7 +235,7 @@ def list_study_sessions(
         {
             "id": s.id,
             "date": s.session_date,
-            "challenge_day": s.challenge_day,
+            "challenge_day": min(100, max(1, s.challenge_day if s.challenge_day <= 100 else 1)),
             "questions_solved": s.questions_solved,
             "duration_minutes": s.duration_minutes,
             "notes": s.notes,
@@ -243,29 +254,54 @@ def update_profile_readme(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update the GitHub profile README section for a specific study session."""
-    session = db.execute(
-        select(StudySession).where(
-            StudySession.id == body.session_id,
-            StudySession.user_id == current_user.id,
-        )
-    ).scalar_one_or_none()
+    """Update the GitHub profile README Random Dev Quote section."""
+    session = None
+    if body.session_id:
+        session = db.execute(
+            select(StudySession).where(
+                StudySession.id == body.session_id,
+                StudySession.user_id == current_user.id,
+            )
+        ).scalar_one_or_none()
 
     if not session:
-        raise HTTPException(status_code=404, detail="Study session not found")
+        today = scheduler.get_today_ist()
+        session = db.execute(
+            select(StudySession).where(
+                StudySession.user_id == current_user.id,
+                StudySession.session_date == today,
+            )
+        ).scalar_one_or_none()
+        if not session:
+            session = streak_svc.record_study_session(
+                db=db,
+                user=current_user,
+                questions_solved=0,
+                duration_minutes=30,
+                notes="Daily Dev Quote sync",
+            )
 
-    quote = quote_svc.get_quote_for_day(db, session.challenge_day)
+    quote = quote_svc.get_random_quote()
     dashboard_url = f"{settings.frontend_url}"
 
-    result = github_service.update_github_profile_readme(
-        db=db,
-        user=current_user,
-        session=session,
-        quote=quote,
-        dashboard_url=dashboard_url,
-        dry_run=body.dry_run,
-    )
-    return result
+    try:
+        result = github_service.update_github_profile_readme(
+            db=db,
+            user=current_user,
+            session=session,
+            quote=quote,
+            dashboard_url=dashboard_url,
+            dry_run=body.dry_run,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("GitHub README update failed: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc) or "Failed to update GitHub profile README",
+        )
 
 
 # ─── Daily Briefing (for GitHub Actions workflow) ─────────────────────────────

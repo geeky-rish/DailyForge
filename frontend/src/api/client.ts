@@ -184,8 +184,8 @@ export const getStudySessions = (limit = 14) =>
 
 // ─── GitHub README Sync ──────────────────────────────────────────────────────
 
-export const updateGithubReadme = (sessionId: number, dryRun = false) =>
+export const updateGithubReadme = (sessionId?: number, dryRun = false) =>
   request<{ status: string; commit_sha?: string; diff_preview?: string; dry_run: boolean }>(
     '/api/github/profile-readme',
-    { method: 'POST', body: JSON.stringify({ session_id: sessionId, dry_run: dryRun }) }
+    { method: 'POST', body: JSON.stringify({ session_id: sessionId || undefined, dry_run: dryRun }) }
   );
